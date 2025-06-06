@@ -1,5 +1,5 @@
 # MIX-emulator
-Emulator (incomplete) of the "thought experiment" MIX computer from TAOCP ed3 vol1.
+Emulator (extremely incomplete) of the "thought experiment" MIX computer from TAOCP ed3 vol1.
 
 MIX is not easy to emulate, because
 <ul>

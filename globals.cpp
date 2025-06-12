@@ -1,8 +1,10 @@
 // Vainstein K 2025may24
 
+#include "types.hpp"
+
 using enum eInterpretModifByte;
 
-const VerbsRosterEntry verbsRoster[64] =
+VerbsRosterEntry verbsRoster[64] =
 {
 	{ 0, AS_variant,	NULL,	{"NOP",}}	,
 	{ 1, AS_fieldSpec5,"FADD",	{"ADD",}}	,

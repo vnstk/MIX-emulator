@@ -1,5 +1,15 @@
 // Vainstein K 2025may24
 
+#include "types.hpp"
+
+extern Instance g__state;
+
+#include <cassert>
+#include <cstdio> //For sprintf
+#include <cstring> //For memset
+
+
+
 char const *prettySign (eSign sign) {
 	return sign == eSign::Positive ? "\e[33;1m+\e[0m" : "\e[33;1m-\e[0m";
 }
@@ -12,6 +22,7 @@ struct Lines {
 //
 void prLines (Lines& lines) {
 	printf("%s\n%s\n%s\n\n", lines._topLine,lines._midLine,lines._botLine);
+	memset(&lines, '\0', sizeof lines);
 }
 
 
@@ -31,19 +42,22 @@ void linescatWord (Word const& w, Lines& lines)
 	strcat(lines._midLine, bufB);
 
 	int iField = 0;
-	if (! w.empty() && (p->_fields[0]._posR == 0)) // first field is just the sign??
+	if (! w.empty() && (p->_fields[0]._pos._R == 0)) // just the sign??
 		++iField;
 
     uint8_t const eff_nFieldsPop = w.empty() ? 5 : p->_nFieldsPop;
 	for (; iField < eff_nFieldsPop; ++iField) {
 		Field const *const pf = &p->_fields[iField];
-        uint8_t const eff_nDatabytes = w.empty() ? 1 : pf->_nDataBytes;
+        uint8_t const eff_nDatabytes = w.empty() ? 1 : pf->_nDatabytes;
 
         strcat(bufA, " --");
         for (int jSlot = 1; jSlot < eff_nDatabytes; ++jSlot)
 			strcat(bufA, "+--");
 
-        strcat(lines._midLine, "|"); // Print partition bar
+		if (pf->_ownsSign)
+			strcat(lines._midLine, " ");
+		else
+			strcat(lines._midLine, "|"); // Print partition bar
 
         char bufC[16] = {'\0',};
         if (pf->_numVal == UNKv)
@@ -127,47 +141,68 @@ int main ()
 
 	linescatTag("        ", lines);
 
-	rX.populate(eSign::Negative, 2,4,6,58,9);
+	rX.populate(eSign::Negative, 2,4,6,58,9); // Needn't reset() first.
 	linescatWord(rX, lines);
 
 	linescatTag("   rX", lines);
 
 	prLines(lines);
 
-    // // // Test the LD* ops.
-    resetWord(rA);
 
-    Word& m2222 = g__state._memory[2222];
+	char buf[64];
+	Word& m2222 = g__state._memory[2222];
+
+#define BEGIN_section(s)                                   \
+	printf("\n\n\e[32;1m~~~~~~~~~~~~~~~ \e[22;7m%s\e[23m ~~~~~~~~~~\e[0m\n\n",s)
+
+
+	//======================================================================//
+	BEGIN_section("LD* examples: 1.3.1, p129"); //==========================//
     resetWord(m2222);
     m2222.packField({0,0} ,-1).packField({1,2} ,80)
          .packField({3,3} ,3).packField({4,4} ,5).packField({5,5} ,4);
+    resetWord(rA);
 
-    char buf[64];
-#define PR_rA(descript)                     \
-    sprintf(buf, "/Ln%d/  %s", __LINE__,descript);  \
-	memset(&lines, '\0', sizeof lines);     \
+#define PR_one(descript)                     \
+    sprintf(buf, "/Ln%d/      %s  ", __LINE__,descript);  \
     linescatTag(buf, lines);                \
 	linescatWord(rA, lines);                \
     resetWord(rA);                          \
 	prLines(lines)
 
-    op__loadField(rA, m2222, 1,5);
-    PR_rA("    1:5  ");
-
-    op__loadField(rA, m2222, 3,5);
-    PR_rA("    3:5  ");
-
-    op__loadField(rA, m2222, 0,3);
-    PR_rA("    0:3  ");
-
-    op__loadField(rA, m2222, 4,4);
-    PR_rA("    4:4  ");
-
-    op__loadField(rA, m2222, 0,0);
-    PR_rA("    0:0  ");
-
-    op__loadField(rA, m2222, 1,1);
-    PR_rA("    1:1  ");
+    op__loadField(rA, m2222, {1,5});    PR_one("1:5");
+    op__loadField(rA, m2222, {3,5});    PR_one("3:5");
+    op__loadField(rA, m2222, {0,3});    PR_one("0:3");
+    op__loadField(rA, m2222, {4,4});    PR_one("4:4");
+    op__loadField(rA, m2222, {0,0});    PR_one("0:0");
+    op__loadField(rA, m2222, {1,1});    PR_one("1:1");
+#undef PR_one
 
 
+	//======================================================================//
+	BEGIN_section("ST* examples: 1.3.1, p130"); //==========================//
+	rA.populate(eSign::Positive, 6,7,8,9,0);
+	m2222.populate(eSign::Negative, 1,2,3,4,5);
+
+#define PR_one(descript)                     \
+    sprintf(buf, "/Ln%d/      %s  ", __LINE__,descript);  \
+    linescatTag(buf, lines);                \
+	linescatWord(m2222, lines);             \
+	prLines(lines);                         \
+	rA.populate(eSign::Positive, 6,7,8,9,0);	\
+	m2222.populate(eSign::Negative, 1,2,3,4,5)
+
+	op__storeField(rA, m2222, {1,5});    PR_one("1:5");
+	op__storeField(rA, m2222, {5,5});    PR_one("5:5");
+	op__storeField(rA, m2222, {2,2});    PR_one("2:2");
+	op__storeField(rA, m2222, {2,3});    PR_one("2:3");
+	op__storeField(rA, m2222, {0,1});    PR_one("0:1");
+#undef PR_one
+
+
+	//======================================================================//
+	BEGIN_section("arith op examples: 1.3.1, pp132-3"); //==================//
+
+
+	
 }

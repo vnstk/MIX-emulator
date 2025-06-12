@@ -1,7 +1,9 @@
 // Vainstein K 2025may24
 
+#ifndef EMU_TYPES__HPP
+#define EMU_TYPES__HPP
+
 #include <cstdint> //For uint8_t etc
-#include <utility> //For pair
 
 constexpr int N_memoryWords = 4000;
 
@@ -18,49 +20,65 @@ typedef int32_t calcNumVal_t; //Used during calculations
 typedef uint32_t reprNumVal_t; //As stored
 constexpr reprNumVal_t UNKv = UINT32_MAX;
 
+calcNumVal_t mkSigned (reprNumVal_t qty, eSign sign);
+
 // This could be address, or a relative address (i.e. delta).
 typedef int16_t address_t; // Valid range is -4000..4000
 
+typedef uint8_t idealPos_t; // Valid range is 0..6
+typedef uint8_t reprPos_t;  // Valid range is 1..5
 
-calcNumVal_t mkSigned (reprNumVal_t qty, eSign sign);
+
+struct IdealPosPair {
+	idealPos_t const  _L, _R;
+	IdealPosPair (idealPos_t L, idealPos_t R) : _L(L),_R(R) {}
+	IdealPosPair () =delete;
+	bool affectsSignOnly () const { return _L==0 && _R==0; }
+};
+//
+oneByte_t to_fieldspec (IdealPosPair);
+void expand_fieldspec (oneByte_t fs, idealPos_t& posL, idealPos_t& posR);
+
+struct ReprPosPair {
+	reprPos_t  _L, _R;
+};
 
 
 struct Field {
-	uint8_t _posL, _posR; // posL <= posR.
-	uint8_t _nDataBytes; // Will be 0 if positions are 0:0 --- i.e. just signbit.
-	reprNumVal_t _numVal; // UNK initially; -1 or +1 if positions are 0:0
-	oneByte_t to_fieldSpec () const { return 8 * _posL + _posR; }
-    static uint8_t calc_nDatabytes (uint8_t posL, uint8_t posR);
+	ReprPosPair   _pos;
+	bool          _ownsSign;
+	uint8_t       _nDatabytes;
+	reprNumVal_t  _numVal; // UNK initially
+	static uint8_t calc_nDatabytes (reprPos_t posL, reprPos_t posR);
+	static uint8_t calc_nDatabytes (ReprPosPair rpp);
+	static uint8_t calc_nDatabytes (IdealPosPair ipp);
 };
-void decompose_fieldSpec (oneByte_t fs, uint8_t& posL, uint8_t& posR);
 
-template<size_t N> // where N = # of MX-"data"-bytes; not incl the sign-byte.
+template<size_t N>
 struct Repr {
-	Field   _fields[N+1];
-	uint8_t _nFieldsPop; /* If _nFieldsPop==0, invalid. */
+	Field   _fields[N];
+	uint8_t _nFieldsPop; /* If _nFieldsPop==0, empty. */
     bool    _packed; /* If ! _packed, must have _nFieldsPop==5. */
-    eSign   _sign; /*If _packed, pertains only to **1st** data-bearing field. */
-    int iFirstDataBearingField () const;
+    eSign   _sign; /*If ! _packed, pertains to all fields. */
+	bool signIsUnaffiliated () const {
+		return _packed && _nFieldsPop && ! _fields[0]._ownsSign; }
     bool valid () const;
-    Field const *findField (uint8_t posL, uint8_t posR) const;
 };
 
 
 struct Word {
     static constexpr int N_DATABYTES = 5;
-    Repr<N_DATABYTES>    _repr;
+    Repr<N_DATABYTES>   _repr;
     bool empty () const { return _repr._nFieldsPop == 0; }
     void populate (eSign sign, oneByte_t b1, oneByte_t b2,
                    oneByte_t b3, oneByte_t b4, oneByte_t b5);
-    Word& packField (std::pair<uint8_t,uint8_t> posLR, calcNumVal_t numVal);
+    Word& packField (IdealPosPair ipp, calcNumVal_t numVal);
     bool renderDatabytesArr (oneByte_t (&arr) [N_DATABYTES]) const;
-    oneByte_t renderOneDataByte (int iByte) const;    
 };
-
 
 struct Index {
     static constexpr int N_DATABYTES = 2;
-    Repr<N_DATABYTES>    _repr;
+    Repr<N_DATABYTES>   _repr;
     bool empty () const { return _repr._nFieldsPop == 0; }
 	address_t relativeAddr () const;
 };
@@ -69,19 +87,20 @@ struct Index {
 
 struct Instance {
 	eToggle _overflow;
-	eCmp    _cmpIndicator; 
+	eCmp    _cmpIndicator;
 	Word    _rA, _rX;
 	Index   _rI[7]; // Meant to be indexed by an indexSpec_t; rI[0] is dummy.
 	Index   _rJ; // But rJ's sign is always positive.
 	Word    _memory[N_memoryWords];
 };
 
+void resetWord (Word&);
+void resetIndex (Index *);
+void resetEntireState (void);
+
 
 typedef uint8_t indexSpec_t; // Valid range is 1..6
-const indexSpec_t NONE=0;
-#if 0 // or, instead of indexSpec_t and NONE, maybe just eIndexSpec?
-typedef enum eIndexSpec { NONE=0, I1, I2, I3, I4, I5, I6 };
-#endif
+constexpr indexSpec_t NONE=0;
 
 typedef uint8_t opcode_t; // Valid range is 0..63
 
@@ -94,8 +113,6 @@ struct WordAsInstruction {
 	char const *verbName () const;
 };
 
-
-void populate (Field& f, uint8_t posL, uint8_t posR, reprNumVal_t numVal);
 void populateFrom (WordAsInstruction& wai, Word const& w);
 
 
@@ -110,6 +127,16 @@ enum class eInterpretModifByte : uint8_t {
 struct VerbsRosterEntry {
 	opcode_t  _opCode;
 	eInterpretModifByte  _treat_modifByte_as;
-	char const *_symbName_fpVariant; // If non-NULL, such variant accessible by field==6.
+	char const *_symbName_fpVariant; // If non-NULL, variant accessible by field 6.
 	char const *_symbNames[10]; // At least 0th should alw be populated.
 };
+
+
+void op__loadWord (Word& dstRegister, Word const& srcMainMem);  // reg <-- mem
+void op__loadField (Word& dst, Word const& src, IdealPosPair srcIdealPP);
+
+void op__storeWord (Word const& srcRegister, Word& dstMainMem); // reg --> mem
+void op__storeField (Word const& src, Word& dest, IdealPosPair dstIdealPP);
+
+
+#endif // EMU_TYPES__HPP

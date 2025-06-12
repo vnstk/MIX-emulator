@@ -134,19 +134,31 @@ int main ()
 	memset(&lines, '\0', sizeof lines);
 
     // // // Demo printing.
-	linescatTag("rA   ", lines);
-
+	linescatTag("rA pack(0:3,-1000) pack(4:5,7)   ", lines);
     rA.packField({0,3} ,-1000).packField({4,5} ,7);
 	linescatWord(rA, lines);
-
 	linescatTag("        ", lines);
-
 	rX.populate(eSign::Negative, 2,4,6,58,9); // Needn't reset() first.
 	linescatWord(rX, lines);
-
-	linescatTag("   rX", lines);
-
+	linescatTag("   rX not-packed", lines);
 	prLines(lines);
+
+	puts("\n");
+
+	resetWord(rA);
+	linescatTag("rA pack(1:3, 1000) pack(4:5,7)   ", lines);
+    rA.packField({1,3} ,1000).packField({4,5} ,7);
+	linescatWord(rA, lines);
+	prLines(lines);
+
+	puts("\n");
+
+	resetWord(rA);
+	linescatTag("rA pack(0:0 ,-1) pack(1:3,-1000) pack(4:5,7)   ", lines);
+    rA.packField({0,0} ,-1).packField({1,3} ,1000).packField({4,5} ,7);
+	linescatWord(rA, lines);
+	prLines(lines);
+
 
 
 	char buf[64];
@@ -204,5 +216,5 @@ int main ()
 	BEGIN_section("arith op examples: 1.3.1, pp132-3"); //==================//
 
 
-	
+
 }

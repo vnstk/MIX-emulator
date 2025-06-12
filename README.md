@@ -6,7 +6,7 @@ MIX is not easy to emulate, because
   <li>A word can be divided into fields of arbitrary size.</li>
   <li>The sign can be represented by its own field, be a part of a field, or pertain to all of a word's bytes.</li>
   <li>Some legal operations result in fields with an indeterminate value.</li>
-  <li>A byte can hold at least 64 different values (so, 6 bits); but maybe more.</li>
+  <li>A byte can hold 64 different values, or maybe 100 different values.&nbsp;&nbsp;(Or maybe something in between.)&nbsp;&nbsp;Furthermore, the bytes in a particular word needn't be homogeneous.</li>
 </ul>
 
 <hr/>

@@ -18,12 +18,12 @@ Screenshot of output meant to represent respective results of
 
 ![emu-demo-0](https://github.com/user-attachments/assets/3d77ca21-7c3f-47fc-a952-cb649005fd57)
 
-(Mark <tt>?</tt> denotes a byte with unknown contents.)
-
 <hr/>
 Screenshot of output representing examples of <tt>LDA</tt> op:
 
 ![emu-demo-1](https://github.com/user-attachments/assets/1cc9ad9b-66df-4bac-be05-cd5c98520f09)
+
+(Mark <tt>?</tt> denotes a byte with indeterminate contents.)
 
 <hr/>
 Screenshot of output representing  examples of <tt>STA</tt> op:
